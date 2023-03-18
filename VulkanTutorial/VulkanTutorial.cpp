@@ -1,5 +1,7 @@
 #include "VulkanTutorial.hpp"
 
+#include <set>
+
 #pragma comment(lib, "vulkan-1.lib")
 
 
@@ -102,6 +104,8 @@ void VulkanTutorialApplication::InitVulkan()
 	}
 	CreateInstance();
 	SetupDebugMessenger();
+	CreateSurface();
+
 	PickPhysicalDevice();
 	CreateLogicalDevice();
 }
@@ -171,11 +175,20 @@ void VulkanTutorialApplication::PickPhysicalDevice()
 void VulkanTutorialApplication::CreateLogicalDevice()
 {
 	QueueFamilyIndices indices = FindQueueFamilies();
-	VkDeviceQueueCreateInfo queueCreateInfo{};
-	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	queueCreateInfo.queueFamilyIndex = indices.graphicsFamily;
-	queueCreateInfo.queueCount = 1;
-	queueCreateInfo.pQueuePriorities = Temp(1.0f);
+
+	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+	std::set<uint32_t> uniqueQueueFamilies =
+		{indices.graphicsFamily, indices.presentFamily};
+	float queuePriority = 1.0f;
+	for (uint32_t queueFamily : uniqueQueueFamilies) {
+		VkDeviceQueueCreateInfo queueCreateInfo{};
+		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		queueCreateInfo.queueFamilyIndex = queueFamily;
+		queueCreateInfo.queueCount = 1;
+		queueCreateInfo.pQueuePriorities = &queuePriority;
+		queueCreateInfos.push_back(queueCreateInfo);
+	}
+
 
 	VkPhysicalDeviceFeatures deviceFeatures{};
 
@@ -183,8 +196,9 @@ void VulkanTutorialApplication::CreateLogicalDevice()
 	VkDeviceCreateInfo createInfo{};
 
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-	createInfo.pQueueCreateInfos = &queueCreateInfo;
-	createInfo.queueCreateInfoCount = 1;
+	createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
+
+	createInfo.pQueueCreateInfos = queueCreateInfos.data();
 	createInfo.pEnabledFeatures = &deviceFeatures;
 
 	createInfo.enabledExtensionCount = 0;
@@ -203,8 +217,8 @@ void VulkanTutorialApplication::CreateLogicalDevice()
 	vkGetPhysicalDeviceProperties(this->m_physicalDevice, &physicalDeviceProperties);
 
 
-	vkGetDeviceQueue(this->m_device, indices.graphicsFamily,0, &this->graphicsQueue);
-
+	vkGetDeviceQueue(this->m_device, indices.graphicsFamily, 0, &this->m_graphicsQueue);
+	vkGetDeviceQueue(this->m_device, indices.presentFamily, 0, &this->m_presentQueue);
 
 	spdlog::info("Created logical device. {}", physicalDeviceProperties.deviceName);
 }
@@ -225,13 +239,27 @@ QueueFamilyIndices VulkanTutorialApplication::FindQueueFamilies()
 		if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
 		{
 			indices.graphicsFamily = i;
-			spdlog::info("Found VK_QUEUE_GRAPHICS_BIT {}", i);
-			break;
+
+			VkBool32 presentSupport = VK_FALSE;
+			vkGetPhysicalDeviceSurfaceSupportKHR(this->m_physicalDevice, i, this->m_surface, &presentSupport);
+			if (presentSupport)
+			{
+				indices.presentFamily = i;
+				spdlog::info("Found required queueFamilies");
+				break;
+			}
 		}
 	}
 
 
 	return indices;
+}
+
+void VulkanTutorialApplication::CreateSurface()
+{
+	VK_CHECKERROR(glfwCreateWindowSurface(this->m_instance, this->m_window, nullptr, &this->m_surface),
+	              "Failed to create Window Surface");
+	spdlog::info("Created Window Surface");
 }
 
 void VulkanTutorialApplication::MainLoop()
@@ -246,7 +274,7 @@ void VulkanTutorialApplication::Cleanup()
 {
 	DestroyDebugMessenger();
 	vkDestroyDevice(this->m_device, nullptr);
-
+	vkDestroySurfaceKHR(this->m_instance, this->m_surface, nullptr);
 	vkDestroyInstance(m_instance, nullptr);
 	glfwDestroyWindow(m_window);
 	glfwTerminate();

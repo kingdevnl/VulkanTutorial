@@ -21,6 +21,7 @@ template <class T> T* Temp(T&& t) { return &t; }
 struct QueueFamilyIndices
 {
     uint32_t graphicsFamily;
+    uint32_t presentFamily;
 };
 
 class VulkanTutorialApplication
@@ -35,9 +36,12 @@ private:
     GLFWwindow* m_window;
     VkInstance m_instance;
     VkDebugUtilsMessengerEXT m_debugMessenger;
+    VkSurfaceKHR m_surface;
+
     VkPhysicalDevice m_physicalDevice;
     VkDevice m_device;
-    VkQueue graphicsQueue;
+    VkQueue m_graphicsQueue;
+    VkQueue m_presentQueue;
     
     void InitWindow();
     void InitVulkan();
@@ -48,6 +52,7 @@ private:
     void PickPhysicalDevice();
     void CreateLogicalDevice();
     QueueFamilyIndices FindQueueFamilies();
+    void CreateSurface();
     void MainLoop();
     void Cleanup();
     void DestroyDebugMessenger();
