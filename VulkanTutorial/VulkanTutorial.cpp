@@ -824,6 +824,7 @@ void VulkanTutorialApplication::MainLoop()
 		glfwPollEvents();
 		DrawFrame();
 	}
+	vkDeviceWaitIdle(m_device);
 }
 
 void VulkanTutorialApplication::Cleanup()
