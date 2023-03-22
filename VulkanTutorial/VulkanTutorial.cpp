@@ -485,8 +485,8 @@ void VulkanTutorialApplication::CreateRenderPass()
 
 void VulkanTutorialApplication::CreateGraphicsPipeline()
 {
-	auto vertexCode = IO::ReadFile("res/vert.spv");
-	auto fragmentCode = IO::ReadFile("res/frag.spv");
+	auto vertexCode = IO::ReadFile("res/vertex.spv");
+	auto fragmentCode = IO::ReadFile("res/fragment.spv");
 
 	VkShaderModule vertexShaderModule = CreateShaderModule(vertexCode);
 	VkShaderModule fragmentShaderModule = CreateShaderModule(fragmentCode);
@@ -574,10 +574,8 @@ void VulkanTutorialApplication::CreateGraphicsPipeline()
 
 
 	VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT
-		| VK_COLOR_COMPONENT_A_BIT;
+	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 	colorBlendAttachment.blendEnable = VK_FALSE;
-
 
 	VkPipelineColorBlendStateCreateInfo colorBlending{};
 	colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -589,7 +587,6 @@ void VulkanTutorialApplication::CreateGraphicsPipeline()
 	colorBlending.blendConstants[1] = 0.0f;
 	colorBlending.blendConstants[2] = 0.0f;
 	colorBlending.blendConstants[3] = 0.0f;
-
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
