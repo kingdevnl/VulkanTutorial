@@ -574,7 +574,8 @@ void VulkanTutorialApplication::CreateGraphicsPipeline()
 
 
 	VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT
+		| VK_COLOR_COMPONENT_A_BIT;
 	colorBlendAttachment.blendEnable = VK_FALSE;
 
 	VkPipelineColorBlendStateCreateInfo colorBlending{};
@@ -674,14 +675,15 @@ void VulkanTutorialApplication::CreateCommandPool()
 
 void VulkanTutorialApplication::CreateCommandBuffer()
 {
+	m_commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 	VkCommandBufferAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	allocInfo.commandPool = m_commandPool;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandBufferCount = 1;
+	allocInfo.commandBufferCount = (uint32_t)m_commandBuffers.size();
 
 	VK_CHECKERROR(
-		vkAllocateCommandBuffers(m_device, &allocInfo, &m_commandBuffer),
+		vkAllocateCommandBuffers(m_device, &allocInfo, m_commandBuffers.data()),
 		"Failed to create CommandBuffer"
 	)
 
@@ -750,31 +752,32 @@ void VulkanTutorialApplication::RecordCommandBuffer(VkCommandBuffer commandBuffe
 
 void VulkanTutorialApplication::DrawFrame()
 {
-	vkWaitForFences(m_device, 1, &m_inFlightFence, VK_TRUE, UINT64_MAX);
-	vkResetFences(m_device, 1, &m_inFlightFence);
+	vkWaitForFences(m_device, 1, &m_inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+	vkResetFences(m_device, 1, &m_inFlightFences[currentFrame]);
 	uint32_t imageIndex;
-	vkAcquireNextImageKHR(m_device, m_swapChain, UINT64_MAX, m_imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
-	vkResetCommandBuffer(m_commandBuffer, 0);
-	RecordCommandBuffer(m_commandBuffer, imageIndex);
+	vkAcquireNextImageKHR(m_device, m_swapChain, UINT64_MAX, m_imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE,
+	                      &imageIndex);
+	vkResetCommandBuffer(m_commandBuffers[currentFrame], 0);
+	RecordCommandBuffer(m_commandBuffers[currentFrame], imageIndex);
 
 
 	VkSubmitInfo submitInfo{};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-	VkSemaphore waitSemaphores[] = {m_imageAvailableSemaphore};
+	VkSemaphore waitSemaphores[] = {m_imageAvailableSemaphores[currentFrame]};
 	VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 	submitInfo.waitSemaphoreCount = 1;
 	submitInfo.pWaitSemaphores = waitSemaphores;
 	submitInfo.pWaitDstStageMask = waitStages;
 
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &m_commandBuffer;
-	VkSemaphore signalSemaphores[] = {m_renderFinishedSemaphore};
+	submitInfo.pCommandBuffers = &m_commandBuffers[currentFrame];
+	VkSemaphore signalSemaphores[] = {m_renderFinishedSemaphores[currentFrame]};
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = signalSemaphores;
 
 	VK_CHECKERROR(
-		vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, m_inFlightFence),
+		vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, m_inFlightFences[currentFrame]),
 		"Failed to submit draw command buffer"
 	)
 
@@ -782,12 +785,15 @@ void VulkanTutorialApplication::DrawFrame()
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.waitSemaphoreCount = 1;
 	presentInfo.pWaitSemaphores = signalSemaphores;
-	VkSwapchainKHR swapChains[] = { m_swapChain };
+	VkSwapchainKHR swapChains[] = {m_swapChain};
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = swapChains;
 	presentInfo.pImageIndices = &imageIndex;
 	presentInfo.pResults = nullptr;
 	vkQueuePresentKHR(m_presentQueue, &presentInfo);
+	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+
+	spdlog::info("currentFrame: {}", currentFrame);
 
 }
 
@@ -800,19 +806,28 @@ void VulkanTutorialApplication::CreateSyncObjects()
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-	VK_CHECKERROR(
-		vkCreateSemaphore(m_device, &semaphoreInfo, nullptr, &m_imageAvailableSemaphore),
-		"Failed to create ImageAvailable semaphere"
-	)
 
-	VK_CHECKERROR(
-		vkCreateSemaphore(m_device, &semaphoreInfo, nullptr, &m_renderFinishedSemaphore),
-		"Failed to create RenderFinished semaphere"
-	)
-	VK_CHECKERROR(
-		vkCreateFence(m_device, &fenceInfo, nullptr, &m_inFlightFence),
-		"Failed to create InFlight Fence"
-	)
+	m_imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+	m_renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+	m_inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		VK_CHECKERROR(
+			vkCreateSemaphore(m_device, &semaphoreInfo, nullptr, &m_imageAvailableSemaphores[i]),
+			"Failed to create ImageAvailable semaphere"
+		)
+
+		VK_CHECKERROR(
+			vkCreateSemaphore(m_device, &semaphoreInfo, nullptr, &m_renderFinishedSemaphores[i]),
+			"Failed to create RenderFinished semaphere"
+		)
+		VK_CHECKERROR(
+			vkCreateFence(m_device, &fenceInfo, nullptr, &m_inFlightFences[i]),
+			"Failed to create InFlight Fence"
+		)
+	}
+
 
 	spdlog::info("Created Sync Objects");
 }
@@ -837,9 +852,14 @@ void VulkanTutorialApplication::Cleanup()
 	{
 		vkDestroyFramebuffer(m_device, frameBuffer, nullptr);
 	}
-	vkDestroySemaphore(m_device, m_imageAvailableSemaphore, nullptr);
-	vkDestroySemaphore(m_device, m_renderFinishedSemaphore, nullptr);
-	vkDestroyFence(m_device, m_inFlightFence, nullptr);
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		vkDestroySemaphore(m_device, m_imageAvailableSemaphores[i], nullptr);
+		vkDestroySemaphore(m_device, m_renderFinishedSemaphores[i], nullptr);
+		vkDestroyFence(m_device, m_inFlightFences[i], nullptr);
+	}
+
 	vkDestroyCommandPool(m_device, m_commandPool, nullptr);
 	vkDestroyPipeline(m_device, m_graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(m_device, m_pipelineLayout, nullptr);
