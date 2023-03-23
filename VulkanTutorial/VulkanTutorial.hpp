@@ -46,7 +46,8 @@ struct Vertex
 	glm::vec2 pos;
 	glm::vec3 color;
 
-	static VkVertexInputBindingDescription GetBindingDescription() {
+	static VkVertexInputBindingDescription GetBindingDescription()
+	{
 		VkVertexInputBindingDescription bindingDescription{};
 		bindingDescription.binding = 0;
 		bindingDescription.stride = sizeof(Vertex);
@@ -55,7 +56,8 @@ struct Vertex
 		return bindingDescription;
 	}
 
-	static std::array<VkVertexInputAttributeDescription, 2> GetAttributeDescriptions() {
+	static std::array<VkVertexInputAttributeDescription, 2> GetAttributeDescriptions()
+	{
 		std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
 
 		attributeDescriptions[0].binding = 0;
@@ -71,10 +73,15 @@ struct Vertex
 		return attributeDescriptions;
 	}
 };
+
 const std::vector<Vertex> vertices = {
-	{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-	{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-	{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+	{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+	{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+	{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+	{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+};
+const std::vector<uint16_t> indices = {
+	0, 1, 2, 2, 3, 0
 };
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -116,8 +123,11 @@ public:
 	std::vector<VkFence> m_inFlightFences;
 	uint32_t currentFrame = 0;
 	bool m_framebufferResized = false;
+
 	VkBuffer m_vertexBuffer;
 	VkDeviceMemory m_vertexBufferMemory;
+	VkBuffer m_indexBuffer;
+	VkDeviceMemory m_indexBufferMemory;
 
 	void InitWindow();
 	void InitVulkan();
@@ -146,8 +156,10 @@ public:
 	void DrawFrame();
 	void CreateSyncObjects();
 	void CreateVertexBuffer();
+	void CreateIndexBuffer();
 	uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
-	void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+	void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer,
+	                  VkDeviceMemory& bufferMemory);
 	void CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
 	void MainLoop();
 	void Cleanup();

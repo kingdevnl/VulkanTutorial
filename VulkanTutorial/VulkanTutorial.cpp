@@ -126,6 +126,7 @@ void VulkanTutorialApplication::InitVulkan()
 	CreateFrameBuffers();
 	CreateCommandPool();
 	CreateVertexBuffer();
+	CreateIndexBuffer();
 	CreateCommandBuffer();
 	CreateSyncObjects();
 }
@@ -791,8 +792,9 @@ void VulkanTutorialApplication::RecordCommandBuffer(VkCommandBuffer commandBuffe
 	VkDeviceSize offsets[] = {0};
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-	vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
-	vkCmdEndRenderPass(commandBuffer);
+	vkCmdBindIndexBuffer(commandBuffer, m_indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+	vkCmdEndRenderPass(commandBuffer);;
 	VK_CHECKERROR(
 		vkEndCommandBuffer(commandBuffer),
 		"Failed to record command buffer"
@@ -922,12 +924,34 @@ void VulkanTutorialApplication::CreateVertexBuffer()
 	memcpy(data, vertices.data(), bufferSize);
 	vkUnmapMemory(m_device, stagingBufferMemory);
 
-	CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_vertexBuffer, m_vertexBufferMemory);
+	CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+	             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_vertexBuffer, m_vertexBufferMemory);
 	CopyBuffer(stagingBuffer, m_vertexBuffer, bufferSize);
 	vkDestroyBuffer(m_device, stagingBuffer, nullptr);
 	vkFreeMemory(m_device, stagingBufferMemory, nullptr);
 
 	spdlog::info("Created VertexBuffer");
+}
+
+void VulkanTutorialApplication::CreateIndexBuffer()
+{
+	VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingBufferMemory;
+	CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+	void* data;
+	vkMapMemory(m_device, stagingBufferMemory, 0, bufferSize, 0, &data);
+	memcpy(data, indices.data(), (size_t)bufferSize);
+	vkUnmapMemory(m_device, stagingBufferMemory);
+
+	CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_indexBuffer, m_indexBufferMemory);
+
+	CopyBuffer(stagingBuffer, m_indexBuffer, bufferSize);
+
+	vkDestroyBuffer(m_device, stagingBuffer, nullptr);
+	vkFreeMemory(m_device, stagingBufferMemory, nullptr);
 }
 
 uint32_t VulkanTutorialApplication::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
@@ -974,7 +998,6 @@ void VulkanTutorialApplication::CreateBuffer(VkDeviceSize size, VkBufferUsageFla
 }
 
 
-
 void VulkanTutorialApplication::CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size)
 {
 	VkCommandBufferAllocateInfo allocInfo{};
@@ -1007,8 +1030,6 @@ void VulkanTutorialApplication::CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceS
 	vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
 	vkQueueWaitIdle(m_graphicsQueue);
 	vkFreeCommandBuffers(m_device, m_commandPool, 1, &commandBuffer);
-
-
 }
 
 void VulkanTutorialApplication::MainLoop()
@@ -1026,6 +1047,9 @@ void VulkanTutorialApplication::Cleanup()
 	CleanupSwapChain();
 	vkDestroyBuffer(m_device, m_vertexBuffer, nullptr);
 	vkFreeMemory(m_device, m_vertexBufferMemory, nullptr);
+
+	vkDestroyBuffer(m_device, m_indexBuffer, nullptr);
+	vkFreeMemory(m_device, m_indexBufferMemory, nullptr);
 
 
 	vkDestroyPipeline(m_device, m_graphicsPipeline, nullptr);
