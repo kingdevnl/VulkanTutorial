@@ -147,6 +147,8 @@ public:
 	void CreateSyncObjects();
 	void CreateVertexBuffer();
 	uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+	void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+	void CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
 	void MainLoop();
 	void Cleanup();
 	void DestroyDebugMessenger();
