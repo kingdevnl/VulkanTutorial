@@ -5,9 +5,11 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <vector>
 #include <limits>
-#include  <algorithm>
+#include <algorithm>
+#include <chrono>
 
 
 #define LOG_INFO(msg) spdlog::info("{}:{} {}", __FILE__, __LINE__, std::string(msg));
@@ -74,6 +76,11 @@ struct Vertex
 	}
 };
 
+struct UniformBufferObject
+{
+	glm::mat4 model;
+};
+
 const std::vector<Vertex> vertices = {
 	{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
 	{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
@@ -113,6 +120,7 @@ public:
 
 	VkFormat m_swapChainImageFormat;
 	VkExtent2D m_swapChainExtent;
+	VkDescriptorSetLayout m_descriptorSetLayout;
 	VkPipelineLayout m_pipelineLayout;
 	VkRenderPass m_renderPass;
 	VkPipeline m_graphicsPipeline;
@@ -128,6 +136,11 @@ public:
 	VkDeviceMemory m_vertexBufferMemory;
 	VkBuffer m_indexBuffer;
 	VkDeviceMemory m_indexBufferMemory;
+	std::vector<VkBuffer> m_uniformBuffers;
+	std::vector<VkDeviceMemory> m_uniformBuffersMemory;
+	std::vector<void*> m_uniformBuffersMapped;
+	VkDescriptorPool m_descriptorPool;
+	std::vector<VkDescriptorSet> m_descriptorSets;
 
 	void InitWindow();
 	void InitVulkan();
@@ -157,10 +170,15 @@ public:
 	void CreateSyncObjects();
 	void CreateVertexBuffer();
 	void CreateIndexBuffer();
+	void CreateUniformBuffers();
+	void CreateDescriptorPool();
+	void CreateDescriptorSets();
+	void UpdateUniformBuffer(uint32_t currentImage);
 	uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 	void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer,
 	                  VkDeviceMemory& bufferMemory);
 	void CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
+	void CreateDescriptorSetLayout();
 	void MainLoop();
 	void Cleanup();
 	void DestroyDebugMessenger();
