@@ -46,7 +46,6 @@ class VulkanTutorialApplication
 public:
 	void Run();
 
-private:
 	const uint32_t WIDTH = 1080;
 	const uint32_t HEIGHT = 720;
 	std::vector<const char*> m_validationLayers = {"VK_LAYER_KHRONOS_validation"};
@@ -79,6 +78,8 @@ private:
 	std::vector<VkSemaphore> m_renderFinishedSemaphores;
 	std::vector<VkFence> m_inFlightFences;
 	uint32_t currentFrame = 0;
+	bool m_framebufferResized = false;
+
 	void InitWindow();
 	void InitVulkan();
 	bool CheckValidationLayerSupport();
@@ -99,6 +100,8 @@ private:
 	void CreateFrameBuffers();
 	void CreateCommandPool();
 	void CreateCommandBuffer();
+	void CleanupSwapChain();
+	void RecreateSwapChain();
 	VkShaderModule CreateShaderModule(std::vector<char>& code);
 	void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 	void DrawFrame();
